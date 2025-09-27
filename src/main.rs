@@ -8,6 +8,12 @@ fn main() {
     let screen_w: i32 = 80;
     let screen_h: i32 = 50;
 
+    const MAP_W: i32 = 80;
+    const MAP_H: i32 = 45;
+
+    const COLOR_DARK_WALL: Color = Color {r: 0, g: 0, b: 100};
+    const COLOR_DARK_GROUND: Color = Color {r: 50, g: 50, b: 150};
+
     let fps_limit = 20;
 
     let player_x = screen_w /2 - 1;
@@ -22,8 +28,8 @@ fn main() {
 
     let con = Offscreen::new(screen_w, screen_h);
 
-    let player = Object::new(player_x, player_y, '@', BLUE);
-    let npc = Object::new(player_x, player_y + 5, '&', YELLOW);
+    let player = Object::new(player_x, player_y, 'P', BLUE);
+    let npc = Object::new(player_x, player_y + 5, 'E', YELLOW);
 
     let mut objects = [player, npc];
 
@@ -64,14 +70,13 @@ fn main() {
 }
 
 // FUNCTIONS FOR PLAYER MOVEMENT AND KEY READING
+
 fn handle_keys(tcod: &mut Tcod, player: &mut Object) -> bool {
+
     let key = tcod.root.wait_for_keypress(true);
+
     match key {
-        Key {
-            code: Enter,
-            alt: true,
-            ..
-        } => {
+        Key { code: Enter, alt: true, .. } => {
             let fullscreen = tcod.root.is_fullscreen();
             tcod.root.set_fullscreen(!fullscreen);
         }
@@ -80,18 +85,19 @@ fn handle_keys(tcod: &mut Tcod, player: &mut Object) -> bool {
         Key { code: Down, .. } => player.move_to(0, 1),
         Key { code: Left, .. } => player.move_to(-1, 0),
         Key { code: Right, .. } => player.move_to(1, 0),
-
-        _ => {}
+        _ => {},
     }
     false
 }
 
 // STRUCTS
+
 struct Tcod {
     root: Root,
     con: Offscreen,
 }
 
+#[derive(Debug)]
 struct Object {
     x: i32,
     y: i32,
@@ -114,3 +120,40 @@ impl Object {
         con.put_char(self.x, self.y, self.ch, BackgroundFlag::None);
     }
 }
+
+#[derive(Copy, Clone, Debug)]
+struct Tile {
+    blocked: bool,
+    block_sight: bool,
+}
+
+impl Tile {
+    pub fn empty() -> Self {
+        Tile {
+            blocked: false,
+            block_sight: false
+        }
+    }
+
+    pub fn wall() -> Self {
+        Tile {
+            blocked: true,
+            block_sight: true,
+        }
+    }
+}
+
+type Map = Vec<Vec<Tile>>;
+
+struct Game {
+    map: Map,
+}
+
+fn make_map(map_h: i32, map_w: i32) -> Map {
+    let mut map = vec![vec![Tile::empty(); map_h as usize]; map_w as usize];
+
+    map
+}
+
+
+
