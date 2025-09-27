@@ -26,12 +26,16 @@ fn main() {
         .title("Rusty Game")
         .init();
 
-    let con = Offscreen::new(screen_w, screen_h);
+    let con = Offscreen::new(MAP_W, MAP_H);
 
     let player = Object::new(player_x, player_y, 'P', BLUE);
     let npc = Object::new(player_x, player_y + 5, 'E', YELLOW);
 
     let mut objects = [player, npc];
+
+    let game = Game {
+        map: make_map(MAP_W, MAP_H),
+    };
 
     let mut tcod: Tcod = Tcod{ root, con };
 
@@ -42,26 +46,11 @@ fn main() {
     // GAME LOOP
     while !tcod.root.window_closed() {
         tcod.con.clear();
-
-        for obj in &objects {
-            obj.draw(&mut tcod.con);
-        }
-
-        // PASTING CONTENT OF THE CON (CONSOLE) TO ROOT (MAIN CONSOLE)
-        blit(
-            &tcod.con,
-            (0,0),
-            (screen_w, screen_h),
-            &mut tcod.root,
-            (0,0),
-            1.0,
-            1.0,
-        );
-
+        render_all(&mut tcod, &game, &objects, MAP_W, MAP_H, COLOR_DARK_WALL, COLOR_DARK_GROUND, screen_w, screen_h);
         tcod.root.flush();
 
         let player = &mut objects[0];
-        let exit = handle_keys(&mut tcod, player);
+        let exit = handle_keys(&mut tcod, player, &game);
 
         if exit {
             break;
@@ -69,29 +58,7 @@ fn main() {
     }
 }
 
-// FUNCTIONS FOR PLAYER MOVEMENT AND KEY READING
-
-fn handle_keys(tcod: &mut Tcod, player: &mut Object) -> bool {
-
-    let key = tcod.root.wait_for_keypress(true);
-
-    match key {
-        Key { code: Enter, alt: true, .. } => {
-            let fullscreen = tcod.root.is_fullscreen();
-            tcod.root.set_fullscreen(!fullscreen);
-        }
-        Key { code: Escape, ..} =>return true,
-        Key { code: Up, .. } => player.move_to(0, -1),
-        Key { code: Down, .. } => player.move_to(0, 1),
-        Key { code: Left, .. } => player.move_to(-1, 0),
-        Key { code: Right, .. } => player.move_to(1, 0),
-        _ => {},
-    }
-    false
-}
-
 // STRUCTS
-
 struct Tcod {
     root: Root,
     con: Offscreen,
@@ -110,9 +77,20 @@ impl Object {
         Object{ x, y, ch, color }
     }
 
-    pub fn move_to(&mut self, dx:i32, dy: i32) {
-        self.x += dx;
-        self.y += dy;
+    pub fn move_to(&mut self, dx: i32, dy: i32, game: &Game) {
+        let new_x = self.x + dx;
+        let new_y = self.y + dy;
+
+        // Ensure we're within map bounds and not blocked
+        if new_x >= 0
+            && new_y >= 0
+            && (new_x as usize) < game.map.len()
+            && (new_y as usize) < game.map[0].len()
+            && !game.map[new_x as usize][new_y as usize].blocked
+        {
+            self.x = new_x;
+            self.y = new_y;
+        }
     }
 
     pub fn draw(&self, con: &mut dyn Console) {
@@ -149,10 +127,62 @@ struct Game {
     map: Map,
 }
 
-fn make_map(map_h: i32, map_w: i32) -> Map {
-    let mut map = vec![vec![Tile::empty(); map_h as usize]; map_w as usize];
+// FUNCTIONS
+fn make_map(map_w: i32, map_h: i32) -> Map {
+    let map = vec![vec![Tile::empty(); map_h as usize]; map_w as usize];
 
     map
+}
+
+fn render_all(tcod: &mut Tcod, game: &Game, objects: &[Object; 2],
+              w: i32, h: i32, wall_color: Color, ground_color: Color, screen_w: i32, screen_h: i32) {
+
+    for y in 0..h {
+        for x in 0..w {
+            let wall = game.map[x as usize][y as usize].block_sight;
+
+            if wall {
+                tcod.con.set_char_background(x, y, wall_color, BackgroundFlag::Set);
+            }
+            else {
+                tcod.con.set_char_background(x, y, ground_color, BackgroundFlag::Set);
+            }
+        }
+    }
+
+    for obj in objects {
+        obj.draw(&mut tcod.con);
+    }
+
+    // PASTING CONTENT OF THE CON (CONSOLE) TO ROOT (MAIN CONSOLE)
+    blit(
+        &tcod.con,
+        (0,0),
+        (screen_w, screen_h),
+        &mut tcod.root,
+        (0,0),
+        1.0,
+        1.0,
+    );
+}
+
+fn handle_keys(tcod: &mut Tcod, player: &mut Object, game: &Game) -> bool {
+
+    let key = tcod.root.wait_for_keypress(true);
+
+    match key {
+        Key { code: Enter, alt: true, .. } => {
+            let fullscreen = tcod.root.is_fullscreen();
+            tcod.root.set_fullscreen(!fullscreen);
+        }
+        Key { code: Escape, ..} =>return true,
+        Key { code: Up, .. } => player.move_to(0, -1, game),
+        Key { code: Down, .. } => player.move_to(0, 1, game),
+        Key { code: Left, .. } => player.move_to(-1, 0, game),
+        Key { code: Right, .. } => player.move_to(1, 0, game),
+        _ => {},
+    }
+    false
 }
 
 
