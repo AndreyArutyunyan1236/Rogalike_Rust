@@ -11,8 +11,8 @@ fn main() {
     const MAP_W: i32 = 80;
     const MAP_H: i32 = 45;
 
-    const COLOR_DARK_WALL: Color = Color {r: 0, g: 0, b: 100};
-    const COLOR_DARK_GROUND: Color = Color {r: 50, g: 50, b: 150};
+    const COLOR_DARK_WALL: Color = Color {r: 50, g: 100, b: 50};
+    const COLOR_DARK_GROUND: Color = Color {r: 100, g: 100, b: 150};
 
     let fps_limit = 20;
 
@@ -184,6 +184,3 @@ fn handle_keys(tcod: &mut Tcod, player: &mut Object, game: &Game) -> bool {
     }
     false
 }
-
-
-
